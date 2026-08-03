@@ -25,19 +25,27 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       has_license: ${{ steps.license.outputs.has_license }}
+      license_mode: ${{ steps.license.outputs.license_mode }}
     steps:
       - id: license
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          if [ -n "$UNITY_LICENSE" ] || { [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; }; then
+          if [ -n "$UNITY_LICENSE" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
             echo "has_license=true" >> "$GITHUB_OUTPUT"
-            echo "Unity activation credentials are configured."
+            echo "license_mode=personal" >> "$GITHUB_OUTPUT"
+            echo "Unity Personal activation is configured."
+          elif [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "has_license=true" >> "$GITHUB_OUTPUT"
+            echo "license_mode=professional" >> "$GITHUB_OUTPUT"
+            echo "Unity Pro/trial activation is configured."
           else
             echo "has_license=false" >> "$GITHUB_OUTPUT"
-            echo "Unity build is source-ready but requires UNITY_LICENSE or UNITY_EMAIL + UNITY_PASSWORD repository secrets."
+            echo "license_mode=missing" >> "$GITHUB_OUTPUT"
+            echo "Unity build requires either Personal secrets (UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD) or Pro/trial secrets (UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD)."
           fi
 
   source-and-server-check:
@@ -70,6 +78,7 @@ jobs:
     timeout-minutes: 60
     env:
       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
       UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
       UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
       BUILD_PATH: ${{ github.workspace }}/build/Android/RUN-REALMS-2.0-Remaster.apk
@@ -88,6 +97,11 @@ jobs:
 
       - name: Run Unity EditMode tests
         uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: runrealms2
           unityVersion: 6000.3.18f1
@@ -98,6 +112,11 @@ jobs:
 
       - name: Build Android APK
         uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: runrealms2
           unityVersion: 6000.3.18f1
@@ -147,4 +166,6 @@ jobs:
     steps:
       - run: |
           echo 'Unity source and server checks will complete.'
-          echo 'APK compilation is intentionally skipped until a Unity license is configured in repository Actions secrets.'
+          echo 'APK compilation is intentionally skipped until valid Unity activation secrets are configured.'
+          echo 'Personal: UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD.'
+          echo 'Pro trial: UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD.'
