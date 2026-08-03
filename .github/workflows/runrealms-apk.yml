@@ -6,6 +6,11 @@ on:
     paths:
       - 'runrealms/**'
       - '.github/workflows/runrealms-apk.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'runrealms/**'
+      - '.github/workflows/runrealms-apk.yml'
   workflow_dispatch:
 
 jobs:
