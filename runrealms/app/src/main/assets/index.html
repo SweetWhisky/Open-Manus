@@ -1,3 +1,40 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>RUN//REALMS</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#05070c;color:#fff;font-family:Arial,sans-serif}canvas{display:block;width:100%;height:100%}#hud{position:fixed;inset:0;pointer-events:none;padding:18px;box-sizing:border-box}#top{display:flex;justify-content:space-between;font-weight:700;text-shadow:0 2px 8px #000}#tip{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);font-size:13px;opacity:.8;text-align:center}#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#07101d,#05070c)}.card{width:min(88vw,420px);padding:28px;border:1px solid #1bd9ff55;border-radius:24px;background:#0c1320dd;box-shadow:0 0 45px #00d9ff22;text-align:center}.logo{font-size:38px;font-weight:900;letter-spacing:2px}.sub{opacity:.72;margin:8px 0 24px}button{border:0;border-radius:14px;padding:14px 22px;font-weight:800;background:#00e5ff;color:#031016;font-size:16px}small{display:block;opacity:.65;margin-top:18px;line-height:1.4}</style></head><body><canvas id="g"></canvas><div id="hud"><div id="top"><span id="score">0</span><span id="realm">NEON GRID</span></div><div id="tip">Swipe left/right • Swipe up to jump • Swipe down to slide</div></div><div id="overlay"><div class="card"><div class="logo">RUN//REALMS</div><div class="sub">Every run rewrites the world.</div><button id="start">START RUN</button><small>Prototype build v0.1.0<br>Procedural routes • Adaptive speed • Offline play</small></div></div><script>
-const c=document.getElementById('g'),x=c.getContext('2d'),scoreEl=document.getElementById('score'),realmEl=document.getElementById('realm'),overlay=document.getElementById('overlay');let W,H,dpr,run=false,t=0,score=0,speed=7,lane=1,targetLane=1,jump=0,slide=0,seed=Date.now()%999999,obs=[],touch=null,theme=0;const realms=[['NEON GRID','#071426','#00e5ff','#ff2bd6'],['EMBER CITY','#21100b','#ff8a00','#ffd166'],['FROST VAULT','#0a1824','#8be9fd','#c7f9ff'],['VOID TEMPLE','#130d22','#8b5cf6','#22d3ee']];function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();function spawn(){const type=rnd()<.55?'block':rnd()<.75?'bar':'gate';obs.push({z:1.15,l:Math.floor(rnd()*3),type});if(rnd()<.18)theme=(theme+1)%realms.length}function start(){run=true;t=score=0;speed=7;lane=targetLane=1;jump=slide=0;obs=[];seed=Date.now()%999999;overlay.style.display='none'}document.getElementById('start').onclick=start;function swipe(dx,dy){if(Math.abs(dx)>Math.abs(dy)){targetLane=Math.max(0,Math.min(2,targetLane+(dx>0?1:-1)))}else if(dy<0)jump=1;else slide=1}addEventListener('touchstart',e=>{const q=e.touches[0];touch=[q.clientX,q.clientY]},{passive:true});addEventListener('touchend',e=>{if(!touch)return;const q=e.changedTouches[0];swipe(q.clientX-touch[0],q.clientY-touch[1]);touch=null},{passive:true});addEventListener('keydown',e=>{if(e.key==='ArrowLeft')targetLane=Math.max(0,targetLane-1);if(e.key==='ArrowRight')targetLane=Math.min(2,targetLane+1);if(e.key==='ArrowUp')jump=1;if(e.key==='ArrowDown')slide=1});function fail(){run=false;overlay.style.display='flex';document.querySelector('.sub').textContent='Run ended at '+Math.floor(score)+' m. New realm seed ready.'}function loop(){requestAnimationFrame(loop);const R=realms[theme];x.fillStyle=R[1];x.fillRect(0,0,W,H);for(let i=0;i<28;i++){const p=(i/28+t*.002)%1,yy=H*(.25+p*.75),ww=20+p*W*.7;x.strokeStyle=i%2?R[2]+'33':R[3]+'22';x.beginPath();x.moveTo(W/2-ww,yy);x.lineTo(W/2+ww,yy);x.stroke()}x.strokeStyle=R[2]+'88';x.lineWidth=2;for(let l=0;l<4;l++){const xx=W*.2+l*W*.2;x.beginPath();x.moveTo(W/2,H*.25);x.lineTo(xx,H);x.stroke()}if(run){t++;score+=speed*.08;speed=Math.min(15,7+score/350);lane+=(targetLane-lane)*.24;if(jump>0){jump-=.035;if(jump<=0)jump=0}if(slide>0){slide-=.04;if(slide<=0)slide=0}if(t%Math.max(30,Math.floor(76-speed*2))===0)spawn();for(const o of obs)o.z-=speed*.006;obs=obs.filter(o=>o.z>-.1);for(const o of obs){const p=1-o.z,yy=H*.25+p*H*.72,scale=.25+p*1.5,xx=W/2+(o.l-1)*W*.2*scale,w=54*scale,h=(o.type==='bar'?28:80)*scale;x.fillStyle=o.type==='gate'?R[3]:R[2];x.fillRect(xx-w/2,yy-h,w,h);if(o.z<.08&&o.z>-.02&&Math.abs(lane-o.l)<.38){if(o.type==='bar'&&slide<=0)fail();else if(o.type!=='bar'&&jump<=0)fail()}}const py=H*.82-jump*H*.22,ph=slide>0?38:72;x.fillStyle='#fff';x.fillRect(W/2+(lane-1)*W*.2-18,py-ph,36,ph);scoreEl.textContent=Math.floor(score)+' m';realmEl.textContent=R[0]}else{scoreEl.textContent=Math.floor(score)+' m';realmEl.textContent=R[0]}}loop();
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05070c">
+<title>RUN//REALMS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div class="topbar"><div class="stat"><div class="label">DISTANCE</div><div class="value" id="distance">0 m</div><div class="label" id="realmName">NEON RAIN CITY</div></div><div class="stat right"><div class="label">SCORE</div><div class="value" id="score">0</div><div class="label"><span id="shards">0</span> SHARDS</div></div></div>
+  <div id="focusWrap"><div id="focusBar"></div></div><div id="combo">x1 COMBO</div>
+  <button id="pause" aria-label="Pause">Ⅱ</button><div id="hint">Swipe lanes • Up jump • Down slide • Tap to focus</div>
+</div>
+
+<div id="home" class="overlay">
+  <div class="panel">
+    <div class="logo">RUN<span>//</span>REALMS</div><div class="tag">Every run rewrites the world.</div>
+    <div class="metrics"><div class="metric"><b id="bestHome">0</b><span>BEST SCORE</span></div><div class="metric"><b id="bankHome">0</b><span>SHARDS</span></div><div class="metric"><b id="runsHome">0</b><span>RUNS</span></div></div>
+    <div class="realmcards" id="realmCards"></div>
+    <div class="seedrow"><input id="seedInput" maxlength="14" value="REALM-001"><button class="secondary small" id="randomSeed">RANDOM</button></div>
+    <div class="grid"><button class="primary wide" id="play">START RUN</button><button class="secondary" id="daily">DAILY CHALLENGE</button><button class="secondary" id="settingsBtn">SETTINGS</button></div>
+    <p class="note">Offline test release • Deterministic seeds • Adaptive difficulty • No account required</p>
+  </div>
+</div>
+
+<div id="results" class="overlay hidden"><div class="panel"><div class="label">RUN COMPLETE</div><div class="logo" style="font-size:42px" id="resultTitle">REALM LOST</div><div class="metrics"><div class="metric"><b id="resultScore">0</b><span>SCORE</span></div><div class="metric"><b id="resultDistance">0</b><span>METERS</span></div><div class="metric"><b id="resultShards">0</b><span>SHARDS</span></div></div><p class="note" id="resultNote"></p><div class="grid"><button class="primary" id="retry">REPLAY SEED</button><button class="secondary" id="newRun">NEW SEED</button><button class="secondary wide" id="homeBtn">RETURN HOME</button></div></div></div>
+
+<div id="pauseMenu" class="overlay hidden"><div class="panel"><div class="logo" style="font-size:40px">PAUSED</div><div class="grid" style="margin-top:22px"><button class="primary wide" id="resume">RESUME</button><button class="secondary" id="restart">RESTART</button><button class="danger" id="quit">QUIT RUN</button></div></div></div>
+
+<div id="settings" class="overlay hidden"><div class="panel"><div class="logo" style="font-size:36px">SETTINGS</div><div class="settings"><div class="setting"><div><label>Reduced Motion</label><small>Lowers particles and camera movement.</small></div><button class="toggle" id="motionToggle"><i></i></button></div><div class="setting"><div><label>Haptics</label><small>Short vibration feedback when supported.</small></div><button class="toggle on" id="hapticToggle"><i></i></button></div><div class="setting"><div><label>Mature Encounters</label><small>Optional, adult-only, non-explicit social scenes. Disabled by default.</small></div><button class="toggle" id="matureToggle"><i></i></button></div></div><button class="primary" id="settingsClose" style="margin-top:18px;width:100%">SAVE & CLOSE</button></div></div>
+<div id="toast"></div>
+
+<script src="game-core.js"></script>
+<script src="game-engine.js"></script>
+<script src="game-ui.js"></script>
+</body>
+</html>
