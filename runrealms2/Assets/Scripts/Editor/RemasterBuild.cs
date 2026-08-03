@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -47,7 +48,6 @@ namespace RunRealms2.Editor
         {
             Directory.CreateDirectory("Assets/Generated");
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            scene.name = "RUN_REALMS_2_REMASTER";
             var marker = new GameObject("Runtime bootstrap creates the remaster world");
             marker.transform.position = Vector3.zero;
             EditorSceneManager.SaveScene(scene, ScenePath);
