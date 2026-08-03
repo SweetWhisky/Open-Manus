@@ -1,0 +1,7 @@
+{
+  "worldDirectorEndpoint": "",
+  "addressablesCatalogUrl": "",
+  "requestTimeoutSeconds": 3,
+  "allowOnlineBlueprints": true,
+  "buildChannel": "remaster-preview"
+}
