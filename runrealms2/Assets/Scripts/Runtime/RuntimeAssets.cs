@@ -187,6 +187,15 @@ namespace RunRealms2
                 return;
             }
 
+            // Pickups and hazards own short-lived trigger/spinner components. Destroy them
+            // rather than returning them to the primitive pool; otherwise Unity's deferred
+            // component destruction can leave duplicate gameplay components on same-frame reuse.
+            if (item.GetComponent<WorldInteractable>() != null || item.GetComponent<PickupSpinner>() != null)
+            {
+                UnityEngine.Object.Destroy(item);
+                return;
+            }
+
             var filter = item.GetComponent<MeshFilter>();
             var type = filter != null && filter.sharedMesh != null ? DetectPrimitive(filter.sharedMesh.name) : PrimitiveType.Cube;
             item.SetActive(false);
