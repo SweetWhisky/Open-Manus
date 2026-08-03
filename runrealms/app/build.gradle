@@ -15,9 +15,35 @@ android {
     }
 
     buildTypes {
+        debug {
+            debuggable true
+        }
         release {
+            debuggable false
             minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig false
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*']
         }
     }
 }
