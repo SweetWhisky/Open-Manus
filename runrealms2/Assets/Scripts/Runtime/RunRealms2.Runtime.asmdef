@@ -1,0 +1,16 @@
+{
+  "name": "RunRealms2.Runtime",
+  "rootNamespace": "RunRealms2",
+  "references": [
+    "Unity.ugui"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

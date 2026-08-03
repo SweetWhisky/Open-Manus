@@ -1,0 +1,171 @@
+name: RUN REALMS 2 Unity Remaster
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'runrealms2/**'
+      - '.github/workflows/runrealms2-unity.yml'
+  push:
+    branches: [main, run-realms-2-unity-remaster]
+    paths:
+      - 'runrealms2/**'
+      - '.github/workflows/runrealms2-unity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: run-realms-2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      has_license: ${{ steps.license.outputs.has_license }}
+      license_mode: ${{ steps.license.outputs.license_mode }}
+    steps:
+      - id: license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "has_license=true" >> "$GITHUB_OUTPUT"
+            echo "license_mode=personal" >> "$GITHUB_OUTPUT"
+            echo "Unity Personal activation is configured."
+          elif [ -n "$UNITY_SERIAL" ] && [ -n "$UNITY_EMAIL" ] && [ -n "$UNITY_PASSWORD" ]; then
+            echo "has_license=true" >> "$GITHUB_OUTPUT"
+            echo "license_mode=professional" >> "$GITHUB_OUTPUT"
+            echo "Unity Pro/trial activation is configured."
+          else
+            echo "has_license=false" >> "$GITHUB_OUTPUT"
+            echo "license_mode=missing" >> "$GITHUB_OUTPUT"
+            echo "Unity build requires either Personal secrets (UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD) or Pro/trial secrets (UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD)."
+          fi
+
+  source-and-server-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate server JavaScript
+        run: |
+          node --check runrealms2/Server/world-director/server.mjs
+          node --check runrealms2/Server/ugs/GenerateWorld.js
+      - name: Package Unity source
+        run: |
+          git archive --format=zip --output RUN-REALMS-2.0-Unity-Source.zip HEAD runrealms2
+          sha256sum RUN-REALMS-2.0-Unity-Source.zip > RUN-REALMS-2.0-Unity-Source.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RUN-REALMS-2.0-Unity-Source
+          path: |
+            RUN-REALMS-2.0-Unity-Source.zip
+            RUN-REALMS-2.0-Unity-Source.zip.sha256
+          retention-days: 30
+
+  unity-test-and-build:
+    needs: preflight
+    if: needs.preflight.outputs.has_license == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      BUILD_PATH: ${{ github.workspace }}/build/Android/RUN-REALMS-2.0-Remaster.apk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: runrealms2/Library
+          key: Library-runrealms2-6000.3.18f1-Android-${{ hashFiles('runrealms2/Assets/**', 'runrealms2/Packages/**', 'runrealms2/ProjectSettings/**') }}
+          restore-keys: |
+            Library-runrealms2-6000.3.18f1-Android-
+
+      - name: Run Unity EditMode tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: runrealms2
+          unityVersion: 6000.3.18f1
+          testMode: EditMode
+          artifactsPath: test-results
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: RUN REALMS 2 EditMode Tests
+
+      - name: Build Android APK
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: runrealms2
+          unityVersion: 6000.3.18f1
+          targetPlatform: Android
+          buildMethod: RunRealms2.Editor.RemasterBuild.BuildAndroid
+          androidExportType: androidPackage
+          versioning: Custom
+          version: 2.0.0
+          allowDirtyBuild: true
+
+      - name: Verify Android output
+        run: |
+          test -f "$BUILD_PATH"
+          sha256sum "$BUILD_PATH" > "$BUILD_PATH.sha256"
+          ls -lh "$BUILD_PATH" "$BUILD_PATH.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RUN-REALMS-2.0-Unity-APK
+          path: |
+            build/Android/RUN-REALMS-2.0-Remaster.apk
+            build/Android/RUN-REALMS-2.0-Remaster.apk.sha256
+            test-results/**
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: run-realms-2.0.0-unity-remaster
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title 'RUN//REALMS 2.0 Unity Remaster' \
+              --notes 'Unity 6.3 LTS 3D remaster preview. Procedural humanoid runner, streamed textured buildings, eight realms, animated crowds, interactive UI, synthesized music and SFX, safe procedural hazards, local progression, performance presets, and optional server-directed blueprints. Test build only; production store signing and licensed final art remain separate release steps.'
+          fi
+          gh release upload "$TAG" \
+            "$BUILD_PATH" \
+            "$BUILD_PATH.sha256" \
+            --clobber
+
+  unity-license-notice:
+    needs: preflight
+    if: needs.preflight.outputs.has_license != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo 'Unity source and server checks will complete.'
+          echo 'APK compilation is intentionally skipped until valid Unity activation secrets are configured.'
+          echo 'Personal: UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD.'
+          echo 'Pro trial: UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD.'
