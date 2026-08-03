@@ -2,7 +2,7 @@ name: Build and Publish RUN REALMS APK
 
 on:
   push:
-    branches: [main, run-realms-apk-build]
+    branches: [main, run-realms-v1-performance-ai]
     paths:
       - 'runrealms/**'
       - '.github/workflows/runrealms-apk.yml'
@@ -45,31 +45,44 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Validate game scripts
+      - name: Validate JavaScript and deterministic director
         run: |
+          node --check runrealms/app/src/main/assets/config.js
+          node --check runrealms/app/src/main/assets/world-director.js
           node --check runrealms/app/src/main/assets/game-core.js
           node --check runrealms/app/src/main/assets/game-engine.js
           node --check runrealms/app/src/main/assets/game-ui.js
+          node --check runrealms/backend/server.mjs
+          node runrealms/tests/world-director.test.js
 
-      - name: Lint and build signed release APK
+      - name: Lint and build optimized signed release APK
         working-directory: runrealms
         run: gradle :app:lintRelease :app:assembleRelease --stacktrace --no-daemon
 
-      - name: Verify and package APK
+      - name: Verify and package release
         run: |
-          cp runrealms/app/build/outputs/apk/release/app-release.apk RUN-REALMS-v0.1.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs RUN-REALMS-v0.1.0.apk
-          sha256sum RUN-REALMS-v0.1.0.apk > RUN-REALMS-v0.1.0.apk.sha256
-          zip -j RUN-REALMS-web-preview.zip runrealms/app/src/main/assets/index.html runrealms/app/src/main/assets/style.css runrealms/app/src/main/assets/game-core.js runrealms/app/src/main/assets/game-engine.js runrealms/app/src/main/assets/game-ui.js
+          cp runrealms/app/build/outputs/apk/release/app-release.apk RUN-REALMS-v1.0.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs RUN-REALMS-v1.0.0.apk
+          sha256sum RUN-REALMS-v1.0.0.apk > RUN-REALMS-v1.0.0.apk.sha256
+          zip -j RUN-REALMS-v1.0.0-web-preview.zip \
+            runrealms/app/src/main/assets/index.html \
+            runrealms/app/src/main/assets/style.css \
+            runrealms/app/src/main/assets/config.js \
+            runrealms/app/src/main/assets/world-director.js \
+            runrealms/app/src/main/assets/game-core.js \
+            runrealms/app/src/main/assets/game-engine.js \
+            runrealms/app/src/main/assets/game-ui.js
+          git archive --format=zip --output RUN-REALMS-v1.0.0-source.zip HEAD runrealms
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RUN-REALMS-v0.1.0-APK
+          name: RUN-REALMS-v1.0.0-APK
           path: |
-            RUN-REALMS-v0.1.0.apk
-            RUN-REALMS-v0.1.0.apk.sha256
-            RUN-REALMS-web-preview.zip
+            RUN-REALMS-v1.0.0.apk
+            RUN-REALMS-v1.0.0.apk.sha256
+            RUN-REALMS-v1.0.0-web-preview.zip
+            RUN-REALMS-v1.0.0-source.zip
           retention-days: 30
           if-no-files-found: error
 
@@ -77,15 +90,16 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: run-realms-v0.1.0
+          TAG: run-realms-v1.0.0
         run: |
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" \
-              --title 'RUN//REALMS v0.1.0' \
-              --notes 'Direct Android sideload test release. Includes deterministic seeded runs, five realms, adaptive difficulty, focus mode, local progression, accessibility settings, and an optional adult-only non-explicit content toggle. The APK is test-signed for direct QA installation and is not a Google Play production build.'
+              --title 'RUN//REALMS v1.0.0' \
+              --notes 'Performance and AI-director release. Includes eight deterministic realms, validated route generation, adaptive difficulty, shield/magnet/boost systems, daily missions, local progression, Auto/Performance/Balanced/High graphics, 30/60/90/120 FPS targets, dynamic render scaling, accessibility controls, and an optional server-only GPT-5 Pro blueprint service with strict schema validation. The APK contains no API key and remains fully playable offline. Test-signed for direct QA sideloading; not a Google Play production signature.'
           fi
           gh release upload "$TAG" \
-            RUN-REALMS-v0.1.0.apk \
-            RUN-REALMS-v0.1.0.apk.sha256 \
-            RUN-REALMS-web-preview.zip \
+            RUN-REALMS-v1.0.0.apk \
+            RUN-REALMS-v1.0.0.apk.sha256 \
+            RUN-REALMS-v1.0.0-web-preview.zip \
+            RUN-REALMS-v1.0.0-source.zip \
             --clobber
