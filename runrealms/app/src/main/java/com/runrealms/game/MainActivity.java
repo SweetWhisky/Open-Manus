@@ -36,6 +36,9 @@ public final class MainActivity extends Activity {
         webView.setHorizontalScrollBarEnabled(false);
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true);
+        }
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -43,12 +46,16 @@ public final class MainActivity extends Activity {
         settings.setDatabaseEnabled(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
-        settings.setBlockNetworkLoads(true);
+        settings.setBlockNetworkLoads(false);
+        settings.setGeolocationEnabled(false);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
+        settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
+        settings.setSaveFormData(false);
+        settings.setDefaultTextEncodingName("utf-8");
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -72,17 +79,15 @@ public final class MainActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
-            enterImmersiveMode();
-        }
+        if (hasFocus) enterImmersiveMode();
     }
 
     @Override
     protected void onPause() {
         if (webView != null) {
-            webView.evaluateJavascript(
-                    "window.pauseGameFromNative && window.pauseGameFromNative()", null);
+            webView.evaluateJavascript("window.pauseGameFromNative && window.pauseGameFromNative()", null);
             webView.onPause();
+            webView.pauseTimers();
         }
         super.onPause();
     }
@@ -93,13 +98,16 @@ public final class MainActivity extends Activity {
         enterImmersiveMode();
         if (webView != null) {
             webView.onResume();
+            webView.resumeTimers();
         }
     }
 
     @Override
     protected void onDestroy() {
         if (webView != null) {
+            webView.stopLoading();
             webView.loadUrl("about:blank");
+            webView.clearHistory();
             webView.removeAllViews();
             webView.destroy();
             webView = null;
@@ -109,11 +117,7 @@ public final class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null) {
-            webView.evaluateJavascript(
-                    "window.pauseGameFromNative && window.pauseGameFromNative()", null);
-        } else {
-            super.onBackPressed();
-        }
+        if (webView != null) webView.evaluateJavascript("window.pauseGameFromNative && window.pauseGameFromNative()", null);
+        else super.onBackPressed();
     }
 }
