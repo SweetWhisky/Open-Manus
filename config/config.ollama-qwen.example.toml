@@ -1,0 +1,16 @@
+# Self-hosted OpenManus example using Ollama + Qwen
+# This avoids per-request OpenAI API billing, but usage is limited by your own hardware and the model's context window.
+
+[llm]
+api_type = "ollama"
+model = "qwen3"
+base_url = "http://localhost:11434/v1"
+api_key = "ollama"
+max_tokens = 8192
+temperature = 0.0
+
+[mcp]
+server_reference = "app.mcp.server"
+
+[runflow]
+use_data_analysis_agent = false
